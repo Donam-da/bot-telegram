@@ -17,6 +17,11 @@ const MAX_ITERATIONS = 10;
 // Khởi tạo bot với chế độ polling (liên tục quét tin nhắn mới)
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
+// Bắt lỗi polling để tránh crash bot và bỏ qua cảnh báo khi deploy
+bot.on('polling_error', (error) => {
+    console.log(`[Lỗi Polling] (Có thể bỏ qua nếu đang deploy): ${error.message}`);
+});
+
 // Xử lý lệnh /start
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
