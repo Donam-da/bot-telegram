@@ -1,5 +1,7 @@
 const TelegramBot = require('node-telegram-bot-api');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 const express = require('express');
 
 // --- TẠO WEB SERVER ẢO ĐỂ GIỮ BOT SỐNG TRÊN CLOUD ---
@@ -44,35 +46,36 @@ bot.on('message', async (msg) => {
     let browser;
     try {
         browser = await puppeteer.launch({
-            headless: true, // Trình duyệt chạy ngầm không hiển thị UI lên màn hình
+            headless: 'new', // Sử dụng chế độ headless mới, khó bị phát hiện hơn
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage', // Giúp Puppeteer không bị crash trên server ít RAM
-                '--single-process',
+                // '--single-process', // Cân nhắc loại bỏ nếu server đủ tài nguyên, vì nó có thể bị phát hiện
                 '--disable-blink-features=AutomationControlled' // Tắt cờ tự động hóa để tránh bị Cloudflare/FingerprintJS chặn
             ]
         });
 
         for (let i = 0; i < MAX_ITERATIONS; i++) {
             console.log(`-> Đang chạy vòng lặp ${i + 1}/${MAX_ITERATIONS}...`);
+            let page; // Khai báo page ở đây để có thể đóng trong khối finally
             try {
-                const page = await browser.newPage();
+                page = await browser.newPage();
 
-                // Đặt User-Agent giống người dùng thật để qua mặt hệ thống chống bot
-                await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+                // Đặt viewport giống người dùng thật
+                await page.setViewport({ width: 1920, height: 1080 });
 
-                // Ẩn thân: vô hiệu hóa biến navigator.webdriver mà các trang web hay dùng để check bot
-                await page.evaluateOnNewDocument(() => {
-                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-                });
+                // Plugin "puppeteer-extra-plugin-stealth" đã tự động xử lý User-Agent, navigator.webdriver
+                // và nhiều kỹ thuật ẩn mình khác. Bạn không cần các dòng code dưới đây nữa.
+                // await page.setUserAgent('...');
+                // await page.evaluateOnNewDocument(() => { ... });
 
                 // Truy cập trang nhanh hơn, không cần chờ toàn bộ ảnh/quảng cáo tải xong
                 await page.goto(text, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
                 // Đợi 5 giây để Cloudflare hoặc JS của web có đủ thời gian tự động chuyển hướng trang
-                await new Promise(r => setTimeout(r, 5000));
+                await page.waitForTimeout(5000);
 
                 // Lấy đường link cuối cùng trình duyệt đang đứng lại
                 const finalUrl = new URL(page.url());
@@ -82,10 +85,12 @@ bot.on('message', async (msg) => {
                     uniqueIds.add(pathParts[0]);
                     console.log(`   => Đã bắt được mã ẩn: ${pathParts[0]}`);
                 }
-
-                await page.close();
             } catch (error) {
                 console.error(`Lỗi ở vòng lặp thứ ${i + 1}:`, error.message);
+            } finally {
+                if (page && !page.isClosed()) {
+                    await page.close();
+                }
             }
         }
         await browser.close();
