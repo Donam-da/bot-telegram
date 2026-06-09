@@ -9,7 +9,7 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Web server đang chạy trên port ${port}`));
 
 // --- CẤU HÌNH ---
-const BOT_TOKEN = '8830337524:AAGYr95QiFHGPLwDqQQTkWHaVXVhJTCTvw8'; // <-- Thay token của bạn vào đây
+const BOT_TOKEN = process.env.BOT_TOKEN; // Lấy token an toàn từ cấu hình của Render
 const MAX_ITERATIONS = 10;
 
 // Khởi tạo bot với chế độ polling (liên tục quét tin nhắn mới)
