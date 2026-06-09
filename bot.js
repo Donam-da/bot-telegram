@@ -43,6 +43,7 @@ bot.on('message', async (msg) => {
     try {
         browser = await puppeteer.launch({
             headless: true, // Trình duyệt chạy ngầm không hiển thị UI lên màn hình
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
