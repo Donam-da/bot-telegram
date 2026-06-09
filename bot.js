@@ -48,7 +48,8 @@ bot.on('message', async (msg) => {
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage', // Giúp Puppeteer không bị crash trên server ít RAM
-                '--single-process'
+                '--single-process',
+                '--disable-blink-features=AutomationControlled' // Tắt cờ tự động hóa để tránh bị Cloudflare/FingerprintJS chặn
             ]
         });
 
@@ -56,11 +57,19 @@ bot.on('message', async (msg) => {
             try {
                 const page = await browser.newPage();
 
-                // Truy cập bằng trình duyệt Chrome ảo, đợi đến khi trang load JS xong
-                await page.goto(text, { waitUntil: 'networkidle2', timeout: 30000 });
+                // Đặt User-Agent giống người dùng thật để qua mặt hệ thống chống bot
+                await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-                // Đợi thêm 2 giây để chắc chắn JS đã kịp chuyển hướng URL
-                await new Promise(r => setTimeout(r, 2000));
+                // Ẩn thân: vô hiệu hóa biến navigator.webdriver mà các trang web hay dùng để check bot
+                await page.evaluateOnNewDocument(() => {
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                });
+
+                // Truy cập trang nhanh hơn, không cần chờ toàn bộ ảnh/quảng cáo tải xong
+                await page.goto(text, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+                // Đợi 5 giây để Cloudflare hoặc JS của web có đủ thời gian tự động chuyển hướng trang
+                await new Promise(r => setTimeout(r, 5000));
 
                 // Lấy đường link cuối cùng trình duyệt đang đứng lại
                 const finalUrl = new URL(page.url());
