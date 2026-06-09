@@ -34,6 +34,8 @@ bot.on('message', async (msg) => {
         return bot.sendMessage(chatId, "Vui lòng gửi một đường link hợp lệ (bắt đầu bằng http hoặc https).");
     }
 
+    console.log(`\n[+] Có người dùng vừa gửi link: ${text}`);
+
     bot.sendMessage(chatId, `⏳ Đang thực hiện ${MAX_ITERATIONS} vòng lặp truy cập link...\nQuá trình này có thể mất một lúc.`);
 
     const uniqueIds = new Set();
@@ -54,6 +56,7 @@ bot.on('message', async (msg) => {
         });
 
         for (let i = 0; i < MAX_ITERATIONS; i++) {
+            console.log(`-> Đang chạy vòng lặp ${i + 1}/${MAX_ITERATIONS}...`);
             try {
                 const page = await browser.newPage();
 
@@ -77,6 +80,7 @@ bot.on('message', async (msg) => {
 
                 if (pathParts.length > 0 && pathParts[0] !== originalId) {
                     uniqueIds.add(pathParts[0]);
+                    console.log(`   => Đã bắt được mã ẩn: ${pathParts[0]}`);
                 }
 
                 await page.close();
